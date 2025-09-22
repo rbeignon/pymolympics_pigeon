@@ -12,7 +12,7 @@ from pymodaq.control_modules.daq_move import DAQ_Move, DAQ_Move_Hardware, DAQ_Mo
 
 # todo: replace here *pymodaq_plugins_template* by your plugin package name
 from pymodaq_plugins_droplets.utils import Config as PluginConfig
-from pymodaq_plugins_droplets.app.ui_test_gui import Ui_Form
+from pymodaq_plugins_droplets.app.droplet_UI import Ui_Form
 
 from qtpy.QtCore import Slot, QDate, QThread
 
@@ -44,9 +44,9 @@ class CustomAppDroplets(gutils.CustomApp):
 
         # create 2 docks to display the camera DAQ_Viewer (one for its settings, one for its viewer)
         self.dock_detector_settings = Dock("Detector Settings", size=(350, 350))
-        self.dockarea.addDock(self.dock_detector_settings, 'left')
+        self.dockarea.addDock(self.dock_detector_settings, 'below')
         self.dock_detector = Dock("Detector Viewer", size=(350, 350))
-        self.dockarea.addDock(self.dock_detector, 'right', self.dock_detector_settings)
+        self.dockarea.addDock(self.dock_detector, 'above', self.dock_detector_settings)
         self.detector = DAQ_Viewer(self.dockarea, dock_settings=self.dock_detector_settings,
                                    dock_viewer=self.dock_detector, title="A detector")
         self.detector.daq_type = 'DAQ2D'
@@ -55,7 +55,7 @@ class CustomAppDroplets(gutils.CustomApp):
 
         # Create the dock for the Frequency axis DAQ_move
         self.dock_AWG_freq = Dock("AWG", size=(350, 350))
-        self.dockarea.addDock(self.dock_AWG_freq, 'left', self.dock_detector_settings)
+        self.dockarea.addDock(self.dock_AWG_freq, 'below', self.dock_detector_settings)
         move_widget = QtWidgets.QWidget()
         self.move_AWG_freq = DAQ_Move(move_widget)
         self.move_AWG_freq.actuator = 'AWGTrueform'
@@ -64,7 +64,7 @@ class CustomAppDroplets(gutils.CustomApp):
 
         # Create the dock for the Voltage axis DAQ_move
         self.dock_AWG_volt = Dock("AWG", size=(350, 350))
-        self.dockarea.addDock(self.dock_AWG_volt, 'left', self.dock_AWG_freq)
+        self.dockarea.addDock(self.dock_AWG_volt, 'above', self.dock_AWG_freq)
         move_widget = QtWidgets.QWidget()
         self.move_AWG_volt = DAQ_Move(move_widget)
         self.move_AWG_volt.actuator = 'AWGTrueform'
@@ -77,17 +77,14 @@ class CustomAppDroplets(gutils.CustomApp):
 
         # Todo Create the custom UI
         self.DCC = Dock('Droplet Control Center')
-        self.dockarea.addDock(self.DCC, 'bottom')
+        self.dockarea.addDock(self.DCC, 'above', self.dock_AWG_freq)
 
         widget = QtWidgets.QWidget()
         self.ui = Ui_Form()
         self.ui.setupUi(widget)
+
         # self.docks['TestDock'].addWidget(self.settings_tree)
         self.DCC.addWidget(widget)
-        self.ui.InitializationButton_AWG.clicked.connect(self.initialize_AWG)
-        self.ui.InitializationButton_Cam.clicked.connect(self.initialize_Cam)
-
-        self.ui.FrequencyDial.valueChanged.connect(self.change_frequency)
 
         QThread.msleep(1000)
         logger.debug('docks are set')

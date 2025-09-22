@@ -1,0 +1,1 @@
+pyuic5 droplet_UI.ui -o droplet_UI.py
