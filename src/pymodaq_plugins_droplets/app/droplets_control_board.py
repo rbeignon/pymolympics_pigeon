@@ -53,56 +53,132 @@ class CustomAppDroplets(gutils.CustomApp):
         self.detector.detector = 'Thorlabs_DCx'
         QtWidgets.QApplication.processEvents()
 
-        # Create the dock for the Frequency axis DAQ_move
-        self.dock_AWG_freq = Dock("AWG", size=(350, 350))
-        self.dockarea.addDock(self.dock_AWG_freq, 'below', self.dock_detector_settings)
+        # Create the dock for the Frequency axis DAQ_move for the bath
+        self.dock_bath_freq = Dock("BathFreq", size=(350, 350))
+        self.dockarea.addDock(self.dock_bath_freq, 'below', self.dock_detector_settings)
         move_widget = QtWidgets.QWidget()
-        self.move_AWG_freq = DAQ_Move(move_widget)
-        self.move_AWG_freq.actuator = 'AWGTrueform'
-        self.move_AWG_freq.controller = 'AWGTrueform'
-        self.dock_AWG_freq.addWidget(move_widget)
+        self.move_bath_freq = DAQ_Move(move_widget)
+        self.move_bath_freq.actuator = 'AWGTrueform'
+        self.move_bath_freq.controller = 'AWGTrueform'
+        self.move_bath_freq.channel = 1
+        self.dock_bath_freq.addWidget(move_widget)
+
+        # Create the dock for the Voltage axis DAQ_move for the bath
+        self.dock_bath_volt = Dock("BathAmp", size=(350, 350))
+        self.dockarea.addDock(self.dock_bath_volt, 'above', self.dock_bath_freq)
+        move_widget = QtWidgets.QWidget()
+        self.move_bath_volt = DAQ_Move(move_widget)
+        self.move_bath_volt.actuator = 'AWGTrueform'
+        self.move_bath_volt.controller = 'AWGTrueform'
+        self.move_bath_volt.channel = 1
+        self.dock_bath_volt.addWidget(move_widget)
+        self.move_bath_volt.settings.child('move_settings').child('multiaxes').child('axis').setValue('Voltage1')
+
+        # Create the dock for the Frequency axis DAQ_move for the droplets generation
+        self.dock_drop_freq = Dock("DropFreq", size=(350, 350))
+        self.dockarea.addDock(self.dock_drop_freq, 'below', self.dock_detector_settings)
+        move_widget = QtWidgets.QWidget()
+        self.move_drop_freq = DAQ_Move(move_widget)
+        self.move_drop_freq.actuator = 'AWGTrueform'
+        self.move_drop_freq.controller = 'AWGTrueform'
+        self.dock_drop_freq.addWidget(move_widget)
 
         # Create the dock for the Voltage axis DAQ_move
-        self.dock_AWG_volt = Dock("AWG", size=(350, 350))
-        self.dockarea.addDock(self.dock_AWG_volt, 'above', self.dock_AWG_freq)
+        self.dock_drop_volt = Dock("DropAmp", size=(350, 350))
+        self.dockarea.addDock(self.dock_drop_volt, 'above', self.dock_bath_freq)
         move_widget = QtWidgets.QWidget()
-        self.move_AWG_volt = DAQ_Move(move_widget)
-        self.move_AWG_volt.actuator = 'AWGTrueform'
-        self.move_AWG_volt.controller = 'AWGTrueform'
-        self.dock_AWG_volt.addWidget(move_widget)
-        self.move_AWG_volt.settings.child('move_settings').child('multiaxes').child('axis').setValue('Voltage1')
+        self.move_drop_volt = DAQ_Move(move_widget)
+        self.move_drop_volt.actuator = 'AWGTrueform'
+        self.move_drop_volt.controller = 'AWGTrueform'
+        self.dock_drop_volt.addWidget(move_widget)
+        self.move_drop_volt.settings.child('move_settings').child('multiaxes').child('axis').setValue('Voltage1')
 
         QtWidgets.QApplication.processEvents()
 
 
         # Todo Create the custom UI
         self.DCC = Dock('Droplet Control Center')
-        self.dockarea.addDock(self.DCC, 'above', self.dock_AWG_freq)
+        self.dockarea.addDock(self.DCC, 'above', self.dock_bath_freq)
 
         widget = QtWidgets.QWidget()
         self.ui = Ui_Form()
         self.ui.setupUi(widget)
 
+        self.move_drop_volt.settings.child('move_settings', 'channel').setValue(2)
+        self.move_drop_freq.settings.child('move_settings', 'channel').setValue(2)
+        self.move_bath_freq.settings.child('move_settings', 'waveform').setValue('Sinus')
+        self.move_drop_freq.settings.child('move_settings', 'waveform').setValue('Sinus')
+
+
         # self.docks['TestDock'].addWidget(self.settings_tree)
         self.DCC.addWidget(widget)
 
+        self.ui.BathFreqSend.clicked.connect(self.change_bath_frequency)
+        self.ui.BathAmpSend.clicked.connect(self.change_bath_voltage)
+        self.ui.DropFreqSend.clicked.connect(self.change_drop_frequency)
+        self.ui.DropAmpSend.clicked.connect(self.change_drop_voltage)
+        self.ui.buttonGroup.buttonClicked.connect(self.change_waveform)
+        self.ui.groupBox.clicked.connect(self.initialize_bath)
+        self.ui.groupBox_2.clicked.connect(self.initialize_drop)
+        self.ui.groupBox_3.clicked.connect(self.initialize_Cam)
+        self.ui.ExposureSpin.editingFinished.connect(self.change_exposure)
         QThread.msleep(1000)
         logger.debug('docks are set')
 
-    def initialize_AWG(self):
-        self.move_AWG_freq.init_hardware()
-        QThread.msleep(1000)
-        self.move_AWG_volt.init_hardware()
-        QThread.msleep(1000)
+    def initialize_drop(self):
+        if self.ui.groupBox_2.isChecked() and not self.move_drop_volt.initialized_state:
+            self.move_drop_volt.init_hardware()
+            QThread.msleep(1000)
+            self.move_drop_freq.init_hardware()
+            QThread.msleep(1000)
+            self.move_drop_freq.settings.child('move_settings', 'waveform').setValue('Square')
+
+        elif not self.ui.groupBox_2.isChecked() and self.move_drop_volt.initialized_state:
+            self.move_drop_freq.close()
+            self.move_drop_volt.close()
+
+
+    def initialize_bath(self):
+        if self.ui.groupBox.isChecked() and not self.move_bath_volt.initialized_state:
+            self.move_bath_volt.init_hardware()
+            QThread.msleep(1000)
+            self.move_bath_freq.init_hardware()
+            QThread.msleep(1000)
+            self.move_bath_freq.settings.child('move_settings', 'waveform').setValue('Sinus')
+
+        elif not self.ui.groupBox.isChecked() and self.move_bath_volt.initialized_state:
+            self.move_bath_freq.close()
+            self.move_bath_volt.close()
+
+
 
     def initialize_Cam(self):
-        self.detector.init_hardware()
-        QThread.msleep(1000)
-        self.detector.grab()
+        if self.ui.groupBox_3.isChecked() and not self.detector.initialized_state:
+            self.detector.init_hardware()
+            QThread.msleep(1000)
+            self.detector.grab()
+        elif not self.ui.groupBox_3.isChecked() and self.detector.initialized_state:
+            self.detector.close()
 
-    def change_frequency(self, frequency):
-        self.move_AWG_freq.move_abs(frequency)
+    def change_exposure(self):
+        self.detector.settings.child('detector_settings', 'exposure').setValue(self.ui.ExposureSpin.value()*0.1)
+
+    def change_bath_frequency(self):
+        self.move_bath_freq.move_abs(self.ui.BathFreqSpin.value())
         pass
+    def change_bath_voltage(self, voltage):
+        self.move_bath_volt.move_abs(self.ui.BathAmpSpin.value()*(1e-3))
+        pass
+
+    def change_drop_frequency(self):
+        self.move_drop_freq.move_abs(self.ui.DropFreqSpin.value())
+        pass
+    def change_drop_voltage(self, voltage):
+        self.move_drop_volt.move_abs(self.ui.DropAmpSpin.value()*(1e-3))
+        pass
+
+    def change_waveform(self, waveform):
+        self.move_bath_freq.settings.child('move_settings', 'waveform').setValue(waveform.objectName())
 
     def setup_actions(self):
         """Method where to create actions to be subclassed. Mandatory
